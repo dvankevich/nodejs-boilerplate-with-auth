@@ -21,7 +21,7 @@ export function generateOpenApiDocument() {
   return generator.generateDocument({
     openapi: "3.0.0",
     info: {
-      title: "announcements board API",
+      title: "node.js API boilerplate",
       version: "1.0.0",
       description:
         "REST API with auth",
