@@ -1,3 +1,4 @@
+import { env } from "./src/config/env.ts";
 import express from "express";
 import type { Request, Response } from "express";
 import rateLimit from "express-rate-limit";
@@ -17,7 +18,7 @@ import prisma from "./prisma/client.ts";
 const app = express();
 
 const allowedOrigins =
-  process.env.ALLOWED_ORIGINS?.split(",")
+  env.ALLOWED_ORIGINS?.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean) || [];
 
@@ -29,7 +30,7 @@ const authLimiter = rateLimit({
   },
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === "test",
+  skip: () => env.NODE_ENV === "test",
 });
 
 app.use(
@@ -53,7 +54,7 @@ app.use(
 app.use(
   helmet({
     contentSecurityPolicy:
-      process.env.NODE_ENV === "production" ? undefined : false,
+      env.NODE_ENV === "production" ? undefined : false,
   }),
 );
 

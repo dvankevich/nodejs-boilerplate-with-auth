@@ -1,13 +1,14 @@
 import "dotenv/config";
+import { env } from "./src/config/env.ts";
 import app from "./app.ts";
 import logger from "./src/logger.ts";
 import prisma from "./prisma/client.ts";
 
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT || 3000;
 
-const server = app.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || "development"}`);
+const server = app.listen(env.PORT, () => {
+  logger.info(`Server is running on port ${env.PORT}`);
+  logger.info(`Environment: ${env.NODE_ENV}`);
 });
 
 // ---------- Graceful Shutdown ----------

@@ -1,3 +1,4 @@
+import { env } from "../config/env.ts";
 import jwt from "jsonwebtoken";
 import createHttpError from "http-errors";
 import type { Request, Response, NextFunction } from "express";
@@ -22,7 +23,7 @@ const authenticate = (
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    const decoded = jwt.verify(token, env.JWT_SECRET!);
     req.user = decoded as jwt.JwtPayload;
     next();
   } catch (error) {

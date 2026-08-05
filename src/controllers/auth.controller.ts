@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import { env } from "../config/env.ts";
 import createHttpError from "http-errors";
 import type { Request, Response } from "express";
 import prisma from "../../prisma/client.ts";
@@ -162,7 +162,7 @@ export const logout = async (req: Request, res: Response) => {
 
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "strict",
   });
 

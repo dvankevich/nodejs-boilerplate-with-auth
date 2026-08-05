@@ -1,3 +1,4 @@
+import { env } from "../config/env.ts";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import type { Response } from "express";
@@ -19,7 +20,7 @@ export const hashToken = (token: string): string =>
 export const createTokens = async (userId: number) => {
   const accessToken = jwt.sign(
     { sub: String(userId) },
-    process.env.JWT_SECRET!,
+    env.JWT_SECRET!,
     { expiresIn: ACCESS_TOKEN_LIFETIME / 1000 },
   );
 
@@ -39,7 +40,7 @@ export const createTokens = async (userId: number) => {
 export const setRefreshTokenCookie = (res: Response, refreshToken: string) => {
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: REFRESH_TOKEN_LIFETIME,
   });

@@ -2,7 +2,7 @@
 
 A minimal and production-oriented boilerplate for a REST API with authentication, built with Node.js, Express, Prisma, and TypeScript.
 
-This project contains only the authentication layer and core infrastructure. Everything related to announcements has been removed.
+This project contains only the authentication layer and core infrastructure.
 
 ## Features
 
