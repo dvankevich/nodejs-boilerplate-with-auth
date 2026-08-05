@@ -1,64 +1,126 @@
 import express from "express";
-import type { NextFunction, Request, Response } from "express";
+import type { Request, Response } from "express";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
+import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import cookieParser from "cookie-parser";
-
+import { pinoHttp } from "pino-http";
+import { errorHandler } from "./src/middleware/errorHandler.ts";
+import logger from "./src/logger.ts";
 import authRouter from "./src/routes/auth.routes.ts";
+
 import { generateOpenApiDocument } from "./src/openapi.ts";
+import prisma from "./prisma/client.ts";
 
 const app = express();
 
+const allowedOrigins =
+  process.env.ALLOWED_ORIGINS?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) || [];
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: {
+    error: "Too many requests, please try again later",
+  },
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === "test"
+});
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.debug({ origin }, "CORS blocked origin");
+        callback(null, false);
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["X-Total-Count"],
+    maxAge: 86400,
+  }),
+);
+
+app.use(
+  helmet({
+    contentSecurityPolicy:
+      process.env.NODE_ENV === "production" ? undefined : false,
+  }),
+);
+
+app.use(
+  pinoHttp({
+    logger,
+    autoLogging: {
+      ignore: (req) =>
+        req.url === "/healthz" || req.url === "/readyz",
+    },
+    serializers: {
+      req: (req) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+      }),
+      res: (res) => ({
+        statusCode: res.statusCode,
+      }),
+    },
+    redact: {
+      paths: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "req.headers['set-cookie']",
+        'res.headers["set-cookie"]',
+      ],
+      remove: true,
+    },
+  }),
+);
+
 app.use(express.json());
 app.use(cookieParser());
+
+// ---------- Health checks  ----------
+
+// Liveness — процес живий, Event Loop відповідає
+app.get("/healthz", (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+  });
+});
+
+// Readiness — готовий приймати трафік (перевіряємо БД)
+app.get("/readyz", async (_req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({ status: "ready" });
+  } catch (err) {
+    logger.warn({ err }, "Readiness check failed");
+    res.status(503).json({ status: "not ready" });
+  }
+});
+
 const openApiDocument = generateOpenApiDocument();
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiDocument));
 
-app.use("/api/auth", authRouter);
+app.use("/api/auth", authLimiter, authRouter);
 
-// 404 Not Found handler - must be after all routes
-app.use((_req: Request, res: Response) => {
+// 404 Not Found handler
+app.use((req: Request, res: Response) => {
+  logger.debug({ method: req.method, url: req.url }, "Route not found");
   res.status(404).json({ error: "Not found" });
 });
 
 // Error handling middleware
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status || err.statusCode || 500;
+app.use(errorHandler);
 
-  // Логуємо тільки серверні помилки (5xx)
-  if (status >= 500) {
-    console.error(err);
-  }
-
-  if (err.type === "entity.parse.failed") {
-    return res.status(400).json({
-      error: "Validation failed",
-      details: {
-        body: ["Invalid JSON format in request body"],
-      },
-    });
-  }
-
-  if (status >= 400 && status < 500) {
-    return res.status(status).json({ error: err.message });
-  }
-
-  if (err.code === "P2025") {
-    return res.status(404).json({ error: "Resource not found" });
-  }
-
-  if (err.code === "P2002") {
-    return res.status(409).json({ error: "Unique constraint violation" });
-  }
-
-  if (err.code === "P2003") {
-    return res.status(400).json({ error: "Foreign key constraint failed" });
-  }
-
-  res.status(500).json({ error: "Internal server error" });
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+export default app;
