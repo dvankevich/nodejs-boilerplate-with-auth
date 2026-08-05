@@ -1,6 +1,7 @@
 import express from "express";
 import type { Request, Response } from "express";
 import rateLimit from "express-rate-limit";
+import { AUTH_RATE_LIMIT } from "./src/constants/rateLimit.ts";
 import cors from "cors";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
@@ -21,14 +22,14 @@ const allowedOrigins =
     .filter(Boolean) || [];
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
+  windowMs: AUTH_RATE_LIMIT.windowMs,
+  max: AUTH_RATE_LIMIT.max,
   message: {
     error: "Too many requests, please try again later",
   },
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === "test"
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 app.use(
