@@ -11,10 +11,8 @@ export const validateBody =
       const flattened = z.flattenError(result.error);
 
       const error = createHttpError(422, "Validation failed");
-      (error as any).details =
-        Object.keys(flattened.fieldErrors).length > 0
-          ? flattened.fieldErrors
-          : flattened.formErrors;
+      // Завжди об'єкт Record<string, string[]> — відповідає ValidationErrorSchema
+      (error as any).details = flattened.fieldErrors;
 
       return next(error);
     }
