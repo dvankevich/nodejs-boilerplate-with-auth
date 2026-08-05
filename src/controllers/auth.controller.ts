@@ -1,4 +1,5 @@
 import { env } from "../config/env.ts";
+import type { AuthenticatedRequest } from "../types/auth.ts";
 import createHttpError from "http-errors";
 import type { Request, Response } from "express";
 import prisma from "../../prisma/client.ts";
@@ -171,8 +172,8 @@ export const logout = async (req: Request, res: Response) => {
   res.status(204).end();
 };
 
-export const me = async (req: Request, res: Response) => {
-  const userId = Number(req.user!.sub);
+export const me = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = Number(req.user.sub);
 
   logger.debug({ userId }, "Get current user profile");
 
@@ -194,3 +195,4 @@ export const me = async (req: Request, res: Response) => {
 
   res.status(200).json(user);
 };
+

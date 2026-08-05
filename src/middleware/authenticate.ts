@@ -1,19 +1,20 @@
-import { env } from "../config/env.ts";
 import jwt from "jsonwebtoken";
 import createHttpError from "http-errors";
 import type { Request, Response, NextFunction } from "express";
+import { env } from "../config/env.ts";
+import type { AuthPayload } from "../types/auth.ts";
 
 declare global {
   namespace Express {
     interface Request {
-      user?: jwt.JwtPayload;
+      user?: AuthPayload;
     }
   }
 }
 
 const authenticate = (
-  req: Request<{}, {}, {}>,
-  res: Response,
+  req: Request,
+  _res: Response,
   next: NextFunction,
 ) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -23,10 +24,10 @@ const authenticate = (
   }
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET!);
-    req.user = decoded as jwt.JwtPayload;
+    const decoded = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
+    req.user = decoded;
     next();
-  } catch (error) {
+  } catch {
     throw createHttpError(401, "Invalid or expired token");
   }
 };
